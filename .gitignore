@@ -1,0 +1,7 @@
+pathFinder/build/*
+!pathFinder/build/.gitkeep
+
+pathFinder/maps/*
+!pathFinder/maps/.gitkeep
+
+pathFinder/.vscode/
