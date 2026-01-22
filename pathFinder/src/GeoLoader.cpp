@@ -98,4 +98,34 @@ namespace CalculatedPath {
         OCTDestroyCoordinateTransformation(coordTrans);
         return true;
     }
+
+    bool GeoLoader::grid_to_waypoint(const MapData& map, double x, double y, float alt, Waypoint& out_wp) {
+        // 1. Convert Grid Index -> UTM Coordinates (Meters)
+        // Use the float x,y directly (plus 0.5 for pixel center offset if desired, 
+        // but for splines we usually treat integer coordinates as centers already).
+        
+        double utm_x = map.geoTransform[0] + x * map.geoTransform[1] + y * map.geoTransform[2];
+        double utm_y = map.geoTransform[3] + x * map.geoTransform[4] + y * map.geoTransform[5];
+
+        // 2. Create Transformer
+        OGRCoordinateTransformation* coordTrans = OGRCreateCoordinateTransformation(
+            (OGRSpatialReference*)&map.targetSRS,
+            (OGRSpatialReference*)&map.sourceSRS);
+        
+        if (!coordTrans) return false;
+
+        // 3. Transform
+        if (!coordTrans->Transform(1, &utm_x, &utm_y)) {
+            OCTDestroyCoordinateTransformation(coordTrans);
+            return false;
+        }
+
+        // 4. Populate Waypoint
+        out_wp.lon = utm_x;
+        out_wp.lat = utm_y;
+        out_wp.alt = alt; // Pass interpolated altitude
+
+        OCTDestroyCoordinateTransformation(coordTrans);
+        return true;
+    }
 }

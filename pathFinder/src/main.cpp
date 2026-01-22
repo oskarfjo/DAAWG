@@ -6,11 +6,12 @@
 
 #include "Astar.h"
 #include "types.h"
+#include "BSplein.h"
 #include "GeoLoader.h"
 
 using namespace CalculatedPath;
 
-void exportMissionFile(const std::vector<Node>& path, GeoLoader& loader, const MapData& currentMap);
+void exportMissionFile(const std::vector<Waypoint>& path);
 
 int main() {
     std::cout << "Drone Pathfinder Program initialized!" << std::endl;
@@ -26,7 +27,7 @@ int main() {
         std::cerr << "Failed to load map data! Check file path." << std::endl;
         return 1;
     }
-    std::cout << "Map loaded successfully (" << currentMap.width << "x" << currentMap.height << ")" << std::endl;
+    std::cout << "Map loaded successfully (" << currentMap.width << "m x " << currentMap.height << "m)" << std::endl;
 
     //// DEFINE START AND END ////
     Waypoint wstart; // Sæbø fotballbane
@@ -53,19 +54,26 @@ int main() {
 
     std::cout << "Calculating path..." << std::endl;
     
-    std::vector<Node> path = A_star(istart, igoal, currentMap); // Runs the A* pathfinding algorithm
+    std::vector<Node> gridPath = A_star(istart, igoal, currentMap);
 
-    if (path.empty()) {
+    if (gridPath.empty()) {
         std::cout << "No path found" << std::endl;
     } else {
-        std::cout << "Path found\n" << "Creating mission file" << std::endl;
-        exportMissionFile(path, loader, currentMap);
+        std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
+        
+        // SIMPLIFY
+        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 2.0); 
+        
+        // SMOOTH
+        std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
+        
+        std::cout << "Creating mission file" << std::endl;
+        exportMissionFile(smoothPath); 
     }
-    
-    return 0;
 }
 
-void exportMissionFile(const std::vector<Node>& path, GeoLoader& loader, const MapData& currentMap) { // Assuming path contains Nodes
+// Rewritten Export Function to accept pre-calculated Waypoints
+void exportMissionFile(const std::vector<Waypoint>& path) {
     std::ofstream outfile("../maps/mission.txt");
 
     if (!outfile.is_open()) {
@@ -73,35 +81,28 @@ void exportMissionFile(const std::vector<Node>& path, GeoLoader& loader, const M
         return;
     }
 
-    // Header
+    // Pixhawk mission file header
     outfile << "QGC WPL 110" << "\n";
 
-    // Iterate through the .txt and write entries
     for (size_t i = 0; i < path.size(); ++i) {
-        Waypoint wp;
+        // Copy the waypoint to modify the sequence numbers
+        Waypoint wp = path[i]; 
 
         wp.wp_nr = i;
 
-        // TODO: make this less goofy
         if (wp.wp_nr == 0) {
             wp.wp_current = 1;
-            wp.coordinate_frame = 0; // Global frame for home
+            wp.coordinate_frame = 0; 
         } else {
             wp.wp_current = 0;
-            wp.coordinate_frame = 3; // Relative altitude frame
+            wp.coordinate_frame = 3; 
         }
-
-        // TODO: Fix entire Waypoint data setting
+        
         wp.action = 16;
         wp.pause = 0;
-        wp.accept_radius = 5;
         wp.passthrough_radius = 0;
         wp.yaw_wing = 0;
-        wp.autocontinue = 1;
 
-        loader.node_to_waypoint(currentMap, path[i], wp);
-
-        // Write to file
         outfile << std::fixed << std::setprecision(8) 
                 << wp.wp_nr << "\t"
                 << wp.wp_current << "\t"

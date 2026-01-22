@@ -20,7 +20,6 @@ namespace CalculatedPath {
         double lon;
         float alt;
         int autocontinue = 1;
-
     };
 
     struct Node // formatted for A*

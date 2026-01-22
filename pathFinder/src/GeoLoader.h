@@ -43,6 +43,8 @@ namespace CalculatedPath {
         // Converts a grid Node to a Lat/Lon Waypoint
         bool node_to_waypoint(const MapData& map, const Node& node, Waypoint& out_wp);
 
+        bool grid_to_waypoint(const MapData& map, double x, double y, float alt, Waypoint& out_wp);
+
     private:
         bool initialized;
     };
