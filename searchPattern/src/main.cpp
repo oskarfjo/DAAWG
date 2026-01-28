@@ -4,9 +4,8 @@
 #include <iomanip>
 #include <fstream>
 
-#include "Astar.h"
+#include "searchPattern.h"
 #include "types.h"
-#include "BSplein.h"
 #include "GeoLoader.h"
 
 using namespace CalculatedPath;
@@ -14,7 +13,7 @@ using namespace CalculatedPath;
 void exportMissionFile(const std::vector<Waypoint>& path);
 
 int main() {
-    std::cout << "Drone Pathfinder Program initialized!" << std::endl;
+    std::cout << "Drone Search Pattern Program initialized!" << std::endl;
     
     GeoLoader loader;
     MapData currentMap;
@@ -29,55 +28,52 @@ int main() {
     }
     std::cout << "Map loaded successfully (" << currentMap.width << "m x " << currentMap.height << "m)" << std::endl;
 
-    //// DEFINE START AND END ////
-    Waypoint wstart;
-    wstart.lat = 62.299351;
-    wstart.lon = 6.897909;
-    wstart.alt = 189.0;
+    //// DEFINE AVALANCHE LOCATION ////
+    Waypoint wAvalanche;
+    wAvalanche.lat = 62.3082386;
+    wAvalanche.lon = 6.8446325;
+    wAvalanche.alt = 1138.4;
 
-    Waypoint wgoal;
-    wgoal.lat = 62.3082386;
-    wgoal.lon = 6.8446325;
-    wgoal.alt = 1138.4;
+    int avalancheLength = 183; // m
+    int avalancheWidth = 71; // m
 
-    Node istart, igoal;
+    Node iAvalanche;
 
     std::cout << "Mapping waypoints to nodes..." << std::endl;
-    if (!loader.waypoint_to_node(currentMap, wstart, istart) || 
-        !loader.waypoint_to_node(currentMap, wgoal, igoal)) {
-        std::cerr << "Start or Goal point is outside the loaded map area!" << std::endl;
+    if (!loader.waypoint_to_node(currentMap, wAvalanche, iAvalanche)) {
+        std::cerr << "Avalanche is outside the loaded map area!" << std::endl;
         return 1;
     }
-    
-    std::cout << "Start Node: [" << istart.x << ", " << istart.y << "] Alt: " << istart.alt << std::endl;
-    std::cout << "Goal Node: [" << igoal.x << ", " << igoal.y << "] Alt: " << igoal.alt << std::endl;
 
-    std::cout << "Calculating path..." << std::endl;
-    
-    std::vector<Node> gridPath = A_star(istart, igoal, currentMap);
+    std::vector<Node> missionNodes = searchPattern(iAvalanche, avalancheLength, avalancheWidth, currentMap);
 
-    if (gridPath.empty()) {
-        std::cout << "No path found" << std::endl;
-    } else {
-        std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
-        
-        // SIMPLIFY
-        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 2.0); 
-        
-        // SMOOTH
-        std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
-        
-        std::cout << "Creating mission file" << std::endl;
-        exportMissionFile(smoothPath); 
+    if (missionNodes.empty()) {
+        std::cout << "Pattern generation error! <EMPTY VECTOR>" << std::endl;
+        return 1;
     }
+
+    std::vector<Waypoint> missionWaypoints;
+    //missionWaypoints.resize(missionNodes.size());
+
+    for (size_t i = 0; i < missionNodes.size(); ++i) {
+        Node currentNode = missionNodes[i];
+        Waypoint currentWaypoint;
+
+        if (loader.node_to_waypoint(currentMap, currentNode, currentWaypoint)) {
+            missionWaypoints.push_back(currentWaypoint);
+        }
+    }
+    
+    exportMissionFile(missionWaypoints);
+
+    return 0;
 }
 
-// Rewritten Export Function to accept pre-calculated Waypoints
 void exportMissionFile(const std::vector<Waypoint>& path) {
     std::ofstream outfile("../maps/mission.txt");
 
     if (!outfile.is_open()) {
-        std::cerr << "Error: Could not create mission file." << std::endl;
+        std::cerr << "Error: Could not create search pattern file." << std::endl;
         return;
     }
 
@@ -120,5 +116,5 @@ void exportMissionFile(const std::vector<Waypoint>& path) {
     }
 
     outfile.close();
-    std::cout << "Mission file generated successfully." << std::endl;
+    std::cout << "Search pattern file generated successfully." << std::endl;
 }

@@ -5,3 +5,14 @@ pathFinder/maps/*
 !pathFinder/maps/.gitkeep
 
 pathFinder/.vscode/
+
+searchPattern/build/*
+!searchPattern/build/.gitkeep
+
+searchPattern/maps/*
+!searchPattern/maps/.gitkeep
+
+searchPattern/.vscode/
+
+flowchart.drawio
+.$flowchart.drawio.bkp

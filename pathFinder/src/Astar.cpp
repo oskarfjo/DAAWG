@@ -71,7 +71,7 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
 
         // Goal reached?
         if (current->samePosition(goal.x, goal.y)) {
-            // Convert PathNode chain back to Node vector
+            // Convert PathNode chain to Node vector
             std::vector<Node> path;
             PathNode* tracer = current;
             
