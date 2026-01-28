@@ -30,9 +30,8 @@ int main() {
 
     //// DEFINE AVALANCHE LOCATION ////
     Waypoint wAvalanche;
-    wAvalanche.lat = 62.3082386;
-    wAvalanche.lon = 6.8446325;
-    wAvalanche.alt = 1138.4;
+    wAvalanche.lat = 62.3232090; //62.3082386;
+    wAvalanche.lon = 6.8372726; //6.8446325;
 
     int avalancheLength = 183; // m
     int avalancheWidth = 71; // m
@@ -45,6 +44,7 @@ int main() {
         return 1;
     }
 
+    // Generates the search pattern
     std::vector<Node> missionNodes = searchPattern(iAvalanche, avalancheLength, avalancheWidth, currentMap);
 
     if (missionNodes.empty()) {
@@ -52,11 +52,14 @@ int main() {
         return 1;
     }
 
+    // converts Node vector to Waypoint vector
     std::vector<Waypoint> missionWaypoints;
-    //missionWaypoints.resize(missionNodes.size());
+    missionWaypoints.reserve(missionNodes.size());
 
     for (size_t i = 0; i < missionNodes.size(); ++i) {
+
         Node currentNode = missionNodes[i];
+        
         Waypoint currentWaypoint;
 
         if (loader.node_to_waypoint(currentMap, currentNode, currentWaypoint)) {
