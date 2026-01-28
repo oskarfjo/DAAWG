@@ -14,13 +14,11 @@ std::vector<Node> CalculatedPath::searchPattern(Node center, int length, int wid
 
     path.reserve((lengthNodes / 2) * 2 + 3);
 
-    // TODO: Add more robust gradient calculation.
-    // Maybe averaging from corners, or random samples
-    int sampleOffset = 5;
+    int sampleOffset = widthNodes/2;
     float dz_dx = map.get_elevation(center.x + sampleOffset, center.y) - map.get_elevation(center.x - sampleOffset, center.y);
     float dz_dy = map.get_elevation(center.x, center.y + sampleOffset) - map.get_elevation(center.x, center.y - sampleOffset);
 
-    // Defines roation angle to orient the y-axis with the gradient
+    // Defines roation angle to orient the y-axis with the gradient of the slope
     float theta = std::atan2(dz_dy, dz_dx);
 
     float sinT = std::sin(theta);
@@ -52,6 +50,9 @@ std::vector<Node> CalculatedPath::searchPattern(Node center, int length, int wid
         }
 
         // Rotation matrixes : theta=0 is paralell to global Y
+        // rot_x = x * |sin(ø)  cos(ø)| 
+        //             |-cos(ø) sin(ø)|
+
         float rotatedFirstX = firstX * sinT + firstY * cosT;
         float rotatedFirstY = firstX * (-cosT) + firstY * sinT;
         firstNode.x = std::round(center.x + rotatedFirstX);
