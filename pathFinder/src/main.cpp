@@ -3,6 +3,7 @@
 #include <vector>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
 
 #include "Astar.h"
 #include "types.h"
@@ -11,7 +12,9 @@
 
 using namespace CalculatedPath;
 
-void exportMissionFile(const std::vector<Waypoint>& path);
+void exportMissionFileTxt(const std::vector<Waypoint>& path);
+
+void exportMissionFilePlan(const std::vector<Waypoint>& path);
 
 int main() {
     std::cout << "Drone Pathfinder Program initialized!" << std::endl;
@@ -19,7 +22,7 @@ int main() {
     GeoLoader loader;
     MapData currentMap;
 
-    std::string mapPath = "../maps/tifs/lowerRight.tif"; // Path to the .tif file
+    std::string mapPath = "../maps/tifs/upperRight.tif"; // Path to the .tif file
     
     std::cout << "Loading map from: " << mapPath << std::endl;
     
@@ -31,14 +34,12 @@ int main() {
 
     //// DEFINE START AND END ////
     Waypoint wstart;
-    wstart.lat = 62.299351;
-    wstart.lon = 6.897909;
-    wstart.alt = 189.0;
+    wstart.lat = 62.441025;
+    wstart.lon = 6.420500;
 
     Waypoint wgoal;
-    wgoal.lat = 62.3082386;
-    wgoal.lon = 6.8446325;
-    wgoal.alt = 1138.4;
+    wgoal.lat = 62.439891;
+    wgoal.lon = 6.419728;
 
     Node istart, igoal;
 
@@ -68,12 +69,12 @@ int main() {
         std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
         
         std::cout << "Creating mission file" << std::endl;
-        exportMissionFile(smoothPath); 
+        exportMissionFilePlan(smoothPath); 
     }
 }
 
 // Rewritten Export Function to accept pre-calculated Waypoints
-void exportMissionFile(const std::vector<Waypoint>& path) {
+void exportMissionFileTxt(const std::vector<Waypoint>& path) {
     std::ofstream outfile("../maps/mission.txt");
 
     if (!outfile.is_open()) {
@@ -91,13 +92,13 @@ void exportMissionFile(const std::vector<Waypoint>& path) {
         wp.wp_nr = i;
 
         if (wp.wp_nr == 0) {
-            wp.wp_current = 1;
-            wp.coordinate_frame = 0; 
+            wp.wp_current = 1; 
         } else {
             wp.wp_current = 0;
-            wp.coordinate_frame = 3; 
         }
         
+        wp.coordinate_frame = 0;
+        wp.alt += 15;
         wp.action = 16;
         wp.pause = 0;
         wp.passthrough_radius = 0;
@@ -121,4 +122,87 @@ void exportMissionFile(const std::vector<Waypoint>& path) {
 
     outfile.close();
     std::cout << "Mission file generated successfully." << std::endl;
+}
+
+void exportMissionFilePlan(const std::vector<Waypoint>& path) {
+    std::ofstream outfile("../maps/mission.plan");
+
+    if (!outfile.is_open()) {
+        std::cerr << "Error: Could not create mission plan file." << std::endl;
+        return;
+    }
+
+    std::ostringstream itemsJson;
+    itemsJson << std::fixed << std::setprecision(8);
+
+    for (size_t i = 0; i < path.size(); ++i) {
+        Waypoint wp = path[i];
+
+        int command = 16;  // MAV_CMD_NAV_WAYPOINT
+        int frame = 0;  // 0 = MAV_FRAME_GLOBAL
+        bool autoContinue = true;
+        double altitude = wp.alt + 15;
+
+        if (i > 0) itemsJson << ",";
+        
+        itemsJson << R"(
+        {
+            "AMSLAltAboveTerrain": null,
+            "Altitude": )" << altitude << R"(,
+            "AltitudeMode": 2,
+            "autoContinue": )" << (autoContinue ? "true" : "false") << R"(,
+            "command": )" << command << R"(,
+            "doJumpId": )" << (i + 1) << R"(,
+            "frame": )" << frame << R"(,
+            "params": [
+                )" << wp.pause << R"(,
+                )" << wp.accept_radius << R"(,
+                0,
+                null,
+                )" << wp.lat << R"(,
+                )" << wp.lon << R"(,
+                )" << altitude << R"(
+            ],
+            "type": "SimpleItem"
+        })";
+    }
+
+    // Get home position from first waypoint (or use defaults)
+    double homeLat = path.empty() ? 0.0 : path[0].lat;
+    double homeLon = path.empty() ? 0.0 : path[0].lon;
+    double homeAlt = path.empty() ? 0.0 : path[0].alt;
+
+    outfile << std::fixed << std::setprecision(8);
+    outfile << R"({
+    "fileType": "Plan",
+    "geoFence": {
+        "circles": [],
+        "polygons": [],
+        "version": 2
+    },
+    "groundStation": "QGroundControl",
+    "mission": {
+        "cruiseSpeed": 15,
+        "firmwareType": 12,
+        "globalPlanAltitudeMode": 2,
+        "hoverSpeed": 5,
+        "items": [)" << itemsJson.str() << R"(
+        ],
+        "plannedHomePosition": [
+            )" << homeLat << R"(,
+            )" << homeLon << R"(,
+            )" << homeAlt << R"(
+        ],
+        "vehicleType": 20,
+        "version": 2
+    },
+    "rallyPoints": {
+        "points": [],
+        "version": 2
+    },
+    "version": 1
+})";
+
+    outfile.close();
+    std::cout << "Mission plan file generated successfully." << std::endl;
 }
