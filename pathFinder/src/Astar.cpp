@@ -101,9 +101,9 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                     int nextY = current->y + yOffset;
                     int nextZ = current->z + (zOffset * 3);
 
-                    int groundAlt = std::ceil(map.get_elevation(nextX, nextY)); // To see if it attempts to go bellow the map
+                    int groundAlt = std::ceil(map.get_elevation(nextX, nextY));
 
-                    if (!map.is_valid(nextX, nextY) || nextZ <= groundAlt || nextZ >= groundAlt+300) continue;
+                    if (!map.is_valid(nextX, nextY) || nextZ <= groundAlt || nextZ >= groundAlt+200) continue;
 
                     PathNode neighbor;
                     neighbor.x = nextX;
@@ -135,7 +135,7 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
 
                         openSet.push(neighborPtr);
 
-                        if (false) {
+                        if (false) { // debug
                             std::cout << "allNodes length: " << allNodes.size() << 
                             "\t openSet lenght: " << openSet.size() <<
                             "\t hCost current: " << neighborPtr->hCost <<

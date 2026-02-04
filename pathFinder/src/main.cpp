@@ -63,17 +63,18 @@ int main() {
         std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
         
         // SIMPLIFY
-        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 2.0); 
+        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 3.0); 
         
         // SMOOTH
         std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
+
+        std::cout << "Simplified to (" << smoothPath.size() << " waypoints)." << std::endl;
         
         std::cout << "Creating mission file" << std::endl;
-        exportMissionFilePlan(smoothPath); 
+        exportMissionFileTxt(smoothPath); 
     }
 }
 
-// Rewritten Export Function to accept pre-calculated Waypoints
 void exportMissionFileTxt(const std::vector<Waypoint>& path) {
     std::ofstream outfile("../maps/mission.txt");
 
