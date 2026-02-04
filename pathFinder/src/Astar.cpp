@@ -5,13 +5,13 @@
 #include <list>
 #include <algorithm>
 #include <map>
+#include <iostream>
 
 using namespace CalculatedPath;
 
 namespace { // Makes local namespace for simplicity
     struct PathNode {
-        int x, y;
-        float alt;
+        int x, y, z;
         float gCost = 0.0f;
         float hCost = 0.0f;
         PathNode* parent = nullptr;
@@ -30,9 +30,9 @@ namespace { // Makes local namespace for simplicity
     };
 
     float calculateDistance3D(const PathNode& a, const PathNode& b) {
-        float dx = static_cast<float>(a.x - b.x);
-        float dy = static_cast<float>(a.y - b.y);
-        float dz = a.alt - b.alt;
+        float dx = static_cast<float>(a.x - b.x) * 10.0f;
+        float dy = static_cast<float>(a.y - b.y) * 10.0f;
+        float dz = static_cast<float>(a.z - b.z);
         return std::sqrt(dx*dx + dy*dy + dz*dz);
     }
 }
@@ -45,23 +45,25 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
 
     // INIT - convert input Node to internal PathNode
     PathNode startInternal;
+    int roundedStartAlt = std::round(start.alt);
     startInternal.x = start.x;
     startInternal.y = start.y;
-    startInternal.alt = start.alt;
+    startInternal.z = roundedStartAlt;
     startInternal.gCost = 0.0f;
     
     // Store goal as PathNode for distance calculations
     PathNode goalInternal;
+    int roundedGoalAlt = std::round(goal.alt);
     goalInternal.x = goal.x;
     goalInternal.y = goal.y;
-    goalInternal.alt = goal.alt;
+    goalInternal.z = roundedGoalAlt;
 
     allNodes.push_back(startInternal);
     PathNode* startPtr = &allNodes.back();
     startPtr->hCost = calculateDistance3D(*startPtr, goalInternal);
     
     openSet.push(startPtr);
-    visited[{start.x, start.y}] = 0.0f;
+    visited[{start.x, start.y, roundedStartAlt}] = 0.0f;
 
     // SEARCH LOOP
     while (!openSet.empty()) {
@@ -79,7 +81,7 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                 Node n;
                 n.x = tracer->x;
                 n.y = tracer->y;
-                n.alt = tracer->alt;
+                n.alt = tracer->z;
                 path.push_back(n);
                 tracer = tracer->parent;
             }
@@ -89,36 +91,59 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
         }
 
         // GENERATE NEIGHBORS
-        for (int xOffset = -1; xOffset <= 1; xOffset++) {
-            for (int yOffset = -1; yOffset <= 1; yOffset++) {
-                
-                if (xOffset == 0 && yOffset == 0) continue;
-
-                int nextX = current->x + xOffset;
-                int nextY = current->y + yOffset;
-
-                if (!map.is_valid(nextX, nextY)) continue;
-
-                PathNode neighbor;
-                neighbor.x = nextX;
-                neighbor.y = nextY;
-                neighbor.alt = map.get_elevation(nextX, nextY);
-
-                float moveCost = calculateDistance3D(*current, neighbor);
-                float newGCost = current->gCost + moveCost;
-
-                Coordinate coord = {nextX, nextY};
-                if (visited.find(coord) == visited.end() || newGCost < visited[coord]) {
+        for (int zOffset = -1; zOffset <= 1; zOffset++) {
+            for (int xOffset = -1; xOffset <= 1; xOffset++) {
+                for (int yOffset = -1; yOffset <= 1; yOffset++) {
                     
-                    allNodes.push_back(neighbor);
-                    PathNode* neighborPtr = &allNodes.back();
+                    if (xOffset == 0 && yOffset == 0 && zOffset == 0) continue;
 
-                    visited[coord] = newGCost;
-                    neighborPtr->gCost = newGCost;
-                    neighborPtr->hCost = calculateDistance3D(*neighborPtr, goalInternal);
-                    neighborPtr->parent = current;
+                    int nextX = current->x + xOffset;
+                    int nextY = current->y + yOffset;
+                    int nextZ = current->z + (zOffset * 3);
 
-                    openSet.push(neighborPtr);
+                    int groundAlt = std::ceil(map.get_elevation(nextX, nextY)); // To see if it attempts to go bellow the map
+
+                    if (!map.is_valid(nextX, nextY) || nextZ <= groundAlt || nextZ >= groundAlt+300) continue;
+
+                    PathNode neighbor;
+                    neighbor.x = nextX;
+                    neighbor.y = nextY;
+                    neighbor.z = nextZ;
+
+                    float altCostMultiplier;
+                    if (nextZ <= groundAlt+75) {
+                        altCostMultiplier = 2.0f;
+                    } else if (nextZ <= groundAlt+125) {
+                        altCostMultiplier = 1.0f;
+                    } else {
+                        altCostMultiplier = 1.2f;
+                    }
+
+                    float moveCost = calculateDistance3D(*current, neighbor) * altCostMultiplier;
+                    float newGCost = current->gCost + moveCost;
+
+                    Coordinate coord = {nextX, nextY, nextZ};
+                    if (visited.find(coord) == visited.end() || newGCost < visited[coord]) {
+                        
+                        allNodes.push_back(neighbor);
+                        PathNode* neighborPtr = &allNodes.back();
+
+                        visited[coord] = newGCost;
+                        neighborPtr->gCost = newGCost;
+                        neighborPtr->hCost = calculateDistance3D(*neighborPtr, goalInternal);
+                        neighborPtr->parent = current;
+
+                        openSet.push(neighborPtr);
+
+                        if (false) {
+                            std::cout << "allNodes length: " << allNodes.size() << 
+                            "\t openSet lenght: " << openSet.size() <<
+                            "\t hCost current: " << neighborPtr->hCost <<
+                            "\t fCost current: " << neighborPtr->fCost() <<
+                            "\t altCostMultiplier " << altCostMultiplier <<
+                            std::endl;
+                        }
+                    }
                 }
             }
         }

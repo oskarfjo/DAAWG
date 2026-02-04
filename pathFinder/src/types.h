@@ -30,7 +30,7 @@ namespace CalculatedPath {
         
     struct Coordinate
     {
-        int x, y;
+        int x, y, z;
         bool operator<(const Coordinate& other) const {
             if (x != other.x) return x < other.x;
             return y < other.y;

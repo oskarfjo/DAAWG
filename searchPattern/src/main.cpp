@@ -20,7 +20,7 @@ int main() {
     GeoLoader loader;
     MapData currentMap;
 
-    std::string mapPath = "../maps/tifs/upperRight.tif"; // Path to the .tif file
+    std::string mapPath = "../maps/tifs/lowerRight.tif"; // Path to the .tif file
     
     std::cout << "Loading map from: " << mapPath << std::endl;
     
@@ -32,11 +32,11 @@ int main() {
 
     //// DEFINE AVALANCHE LOCATION ////
     Waypoint wAvalanche;
-    wAvalanche.lat = 62.440874;
-    wAvalanche.lon = 6.420361;
+    wAvalanche.lat = 62.3072221;
+    wAvalanche.lon = 6.836761;
 
-    int avalancheLength = 50; // m
-    int avalancheWidth = 50; // m
+    int avalancheLength = 200; // m
+    int avalancheWidth = 85; // m
 
     Node iAvalanche;
 
@@ -69,7 +69,7 @@ int main() {
         }
     }
     
-    exportMissionFilePlan(missionWaypoints);
+    exportMissionFileTxt(missionWaypoints);
 
     return 0;
 }
@@ -126,7 +126,7 @@ void exportMissionFileTxt(const std::vector<Waypoint>& path) {
 
 
 void exportMissionFilePlan(const std::vector<Waypoint>& path) {
-    std::ofstream outfile("../maps/mission.plan");
+    std::ofstream outfile("../maps/searchPattern.plan");
 
     if (!outfile.is_open()) {
         std::cerr << "Error: Could not create mission plan file." << std::endl;

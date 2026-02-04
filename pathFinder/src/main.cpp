@@ -22,7 +22,7 @@ int main() {
     GeoLoader loader;
     MapData currentMap;
 
-    std::string mapPath = "../maps/tifs/upperRight.tif"; // Path to the .tif file
+    std::string mapPath = "../maps/tifs/lowerRight.tif"; // Path to the .tif file
     
     std::cout << "Loading map from: " << mapPath << std::endl;
     
@@ -34,12 +34,12 @@ int main() {
 
     //// DEFINE START AND END ////
     Waypoint wstart;
-    wstart.lat = 62.441025;
-    wstart.lon = 6.420500;
+    wstart.lat = 62.2931235;
+    wstart.lon = 6.8933201;
 
     Waypoint wgoal;
-    wgoal.lat = 62.439891;
-    wgoal.lon = 6.419728;
+    wgoal.lat = 62.3072221;
+    wgoal.lon = 6.836761;
 
     Node istart, igoal;
 
@@ -98,7 +98,6 @@ void exportMissionFileTxt(const std::vector<Waypoint>& path) {
         }
         
         wp.coordinate_frame = 0;
-        wp.alt += 15;
         wp.action = 16;
         wp.pause = 0;
         wp.passthrough_radius = 0;
@@ -125,7 +124,7 @@ void exportMissionFileTxt(const std::vector<Waypoint>& path) {
 }
 
 void exportMissionFilePlan(const std::vector<Waypoint>& path) {
-    std::ofstream outfile("../maps/mission.plan");
+    std::ofstream outfile("../maps/path.plan");
 
     if (!outfile.is_open()) {
         std::cerr << "Error: Could not create mission plan file." << std::endl;
@@ -141,7 +140,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
         int command = 16;  // MAV_CMD_NAV_WAYPOINT
         int frame = 0;  // 0 = MAV_FRAME_GLOBAL
         bool autoContinue = true;
-        double altitude = wp.alt + 15;
+        double altitude = wp.alt;
 
         if (i > 0) itemsJson << ",";
         
