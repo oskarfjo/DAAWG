@@ -63,7 +63,7 @@ int main() {
         std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
         
         // SIMPLIFY
-        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 5.0); 
+        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 10.0); 
         
         // SMOOTH
         std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);

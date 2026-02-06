@@ -42,28 +42,33 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
     std::list<PathNode> allNodes; 
     std::priority_queue<PathNode*, std::vector<PathNode*>, CompareNode> openSet;
     std::map<Coordinate, float> visited;
-
-    // INIT - convert input Node to internal PathNode
-    PathNode startInternal;
-    int roundedStartAlt = std::round(start.alt);
-    startInternal.x = start.x;
-    startInternal.y = start.y;
-    startInternal.z = roundedStartAlt + 25;
-    startInternal.gCost = 0.0f;
     
+    int roundedStartAlt = std::round(start.alt);
+    int roundedGoalAlt = std::round(goal.alt);
+
     // Store goal as PathNode for distance calculations
     PathNode goalInternal;
-    int roundedGoalAlt = std::round(goal.alt);
     goalInternal.x = goal.x;
     goalInternal.y = goal.y;
     goalInternal.z = roundedGoalAlt + 25;
 
-    allNodes.push_back(startInternal);
-    PathNode* startPtr = &allNodes.back();
-    startPtr->hCost = calculateDistance3D(*startPtr, goalInternal);
-    
-    openSet.push(startPtr);
-    visited[{start.x, start.y, roundedStartAlt}] = 0.0f;
+    // Generates different start node options with different quad ascent altitudes
+    for (int initZoffset = 20; initZoffset < 100; initZoffset += 5) {
+
+        PathNode startOption;
+        startOption.x = start.x;
+        startOption.y = start.y;
+        startOption.z = roundedStartAlt + initZoffset;
+        startOption.gCost = initZoffset * 2;
+        startOption.hCost = calculateDistance3D(startOption, goalInternal);
+
+        allNodes.push_back(startOption);
+        PathNode* startPtr = &allNodes.back();
+        
+        openSet.push(startPtr);
+        visited[{startOption.x, startOption.y, startOption.z}] = startOption.gCost;
+    }
+
 
     // SEARCH LOOP
     while (!openSet.empty()) {
@@ -112,13 +117,15 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
 
                     float altCostMultiplier;
                     if (nextZ <= groundAlt+20) {
+                        altCostMultiplier = 20.0f;
+                    } else if (nextZ <= groundAlt+35) {
                         altCostMultiplier = 10.0f;
-                    } else if (nextZ <= groundAlt+75) {
-                        altCostMultiplier = 5.0f;
-                    } else if (nextZ <= groundAlt+125) {
+                    } else if (nextZ <= groundAlt+70) {
+                        altCostMultiplier = 3.0f;
+                    } else if (nextZ <= groundAlt+100) {
                         altCostMultiplier = 1.0f;
                     } else {
-                        altCostMultiplier = 3.0f;
+                        altCostMultiplier = 5.0f;
                     }
 
                     float moveCost = calculateDistance3D(*current, neighbor) * altCostMultiplier;
