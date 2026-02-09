@@ -6,6 +6,7 @@ pathFinder/maps/*
 
 pathFinder/.vscode/
 
+
 searchPattern/build/*
 !searchPattern/build/.gitkeep
 
@@ -13,6 +14,12 @@ searchPattern/maps/*
 !searchPattern/maps/.gitkeep
 
 searchPattern/.vscode/
+
+
+signalLocator/build/*
+!signalLocator/build/.gitkeep
+
+signalLocator/.vscode/
 
 flowchart.drawio
 .$flowchart.drawio.bkp

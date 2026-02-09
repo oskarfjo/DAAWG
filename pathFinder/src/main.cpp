@@ -138,7 +138,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
 
     int jumpId = 1;
 
-    // 1. VTOL TAKEOFF
+    // VTOL TAKEOFF
     itemsJson << R"(
         {
             "AMSLAltAboveTerrain": null,
@@ -152,8 +152,8 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
             "type": "SimpleItem"
         })";
 
+    // TRANSIT WAYPOINTS
     for (size_t i = 0; i < path.size(); ++i) {
-        // Always add a comma before waypoints because Takeoff/Transition items precede them
         itemsJson << R"(,
         {
             "AMSLAltAboveTerrain": null,
