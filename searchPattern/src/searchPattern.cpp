@@ -1,79 +1,115 @@
 #include "searchPattern.h"
 #include <cmath>
 #include <vector>
+#include <iostream>
 
 using namespace CalculatedPath;
 
-std::vector<Node> CalculatedPath::searchPattern(Node center, int length, int width, const MapData& map) {
+const double EARTH_RADIUS_M = 6378137.0;
+
+static double toRadians(double degrees) { return degrees * (M_PI / 180.0); }
+static double toDegrees(double radians) { return radians * (180.0 / M_PI); }
+
+// Calculates a destination coordinate given a start point, bearing (degrees), and distance (meters)
+Waypoint calculateDestination(Waypoint start, double bearingDeg, double distanceMeters) {
+    double lat1 = toRadians(start.lat);
+    double lon1 = toRadians(start.lon);
+    double angularDist = distanceMeters / EARTH_RADIUS_M;
+    double bearingRad = toRadians(bearingDeg);
+
+    double lat2 = std::asin(std::sin(lat1) * std::cos(angularDist) +
+                            std::cos(lat1) * std::sin(angularDist) * std::cos(bearingRad));
+
+    double lon2 = lon1 + std::atan2(std::sin(bearingRad) * std::sin(angularDist) * std::cos(lat1),
+                                    std::cos(angularDist) - std::sin(lat1) * std::sin(lat2));
+
+    Waypoint wp;
+    wp.lat = toDegrees(lat2);
+    wp.lon = toDegrees(lon2);
+    return wp;
+}
+
+std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length, int width, const MapData& map, const GeoLoader& loader) {
+    std::vector<Waypoint> path;
+
+    // 1. Calculate Gradient
+    double sampleDist = static_cast<float>(width) / 2.0f;
+
+    Waypoint northPt = calculateDestination(center, 0.0, sampleDist);
+    Waypoint southPt = calculateDestination(center, 180.0, sampleDist);
+    Waypoint eastPt  = calculateDestination(center, 90.0, sampleDist);
+    Waypoint westPt  = calculateDestination(center, 270.0, sampleDist);
+
+    float hN = loader.get_elevation_at_coordinate(map, northPt.lat, northPt.lon);
+    float hS = loader.get_elevation_at_coordinate(map, southPt.lat, southPt.lon);
+    float hE = loader.get_elevation_at_coordinate(map, eastPt.lat, eastPt.lon);
+    float hW = loader.get_elevation_at_coordinate(map, westPt.lat, westPt.lon);
+
+    if (hN < -9000 || hS < -9000 || hE < -9000 || hW < -9000) {
+        std::cerr << "Error: Center point too close to map edge to calculate gradient." << std::endl;
+        return {};
+    }
+
+    double dz_dy = (hN - hS) / (2 * sampleDist); // Change in height per meter North
+    double dz_dx = (hE - hW) / (2 * sampleDist); // Change in height per meter East
+
+    // Calculate aspect (direction of slope). 
+    // atan2(y, x) gives angle from X-axis. We want compass bearing.
+    // Math angle 0 is East. Compass 0 is North.
+    // Compass Bearing = 90 - MathAngle
+    double aspectRad = std::atan2(dz_dy, dz_dx); // Math angle
+    double aspectDeg = toDegrees(aspectRad);
     
-    std::vector<Node> path; 
+    // Convert math angle to compass bearing for "Down Slope"
+    // The gradient vector points UPHILL. We usually want to search DOWN or ACROSS.
+    // Let's assume we align the "Length" of the search box with the gradient (up/down).
+    double gradientBearing = aspectDeg; 
+    
+    // Normalize
+    if (gradientBearing < 0) gradientBearing += 360.0;
 
-    // Ensure dimentionality of the lenght and width (DOM10)
-    int lengthNodes = std::ceil(static_cast<float>(length) / 10.0f);
-    int widthNodes = std::ceil(static_cast<float>(width) / 10.0f);
+    // Angles of local coordinate system
+    double yAxisBearing = gradientBearing;     // Align with slope
+    double xAxisBearing = yAxisBearing + 90.0; // Perpendicular to slope
 
-    path.reserve((lengthNodes / 2) * 2 + 3);
+    int laneSpacing = 20; // (m)
+    int numLanes = std::ceil((float)width / laneSpacing);
+    
+    double halfWidth = width / 2.0;
+    double halfLength = length / 2.0;
 
-    int sampleOffset = widthNodes/2;
-    float dz_dx = map.get_elevation(center.x + sampleOffset, center.y) - map.get_elevation(center.x - sampleOffset, center.y);
-    float dz_dy = map.get_elevation(center.x, center.y + sampleOffset) - map.get_elevation(center.x, center.y - sampleOffset);
-
-    // Defines roation angle to orient the y-axis with the gradient of the slope
-    float theta = std::atan2(dz_dy, dz_dx);
-
-    float sinT = std::sin(theta);
-    float cosT = std::cos(theta);
-
-    // Defines bounds (local to center)
-    int topY    = lengthNodes / 2;
-    int bottomY = -lengthNodes / 2;
-    int leftX   = -widthNodes / 2;
-    int rightX  = widthNodes / 2;
-
-    // Adds a layer of nodes iteratively down the defined area starting from the top
-    bool goingLeft = true;
-    for (int currentY = topY; currentY >= bottomY; currentY -= 2) {
-
-        Node firstNode;
-        Node secondNode;
-
-        int firstY = currentY;
-        int secondY = currentY;
-        int firstX, secondX;
-
-        if (goingLeft) {
-            firstX = leftX;
-            secondX = rightX;
+    bool goingRight = true;
+    for (double y = halfLength; y >= -halfLength; y -= laneSpacing) {
+        
+        double xStart, xEnd;
+        
+        if (goingRight) {
+            xStart = halfWidth;
+            xEnd = -halfWidth;
         } else {
-            firstX = rightX;
-            secondX = leftX;
+            xStart = -halfWidth;
+            xEnd = halfWidth;
         }
 
-        // Rotation matrixes : theta=0 is paralell to global Y
-        // rot_x = x * |sin(ø)  cos(ø)| 
-        //             |-cos(ø) sin(ø)|
+        Waypoint wpA = center; 
+        wpA = calculateDestination(wpA, xAxisBearing, xStart);
+        wpA = calculateDestination(wpA, yAxisBearing, y);
+        
+        Waypoint wpB = center;
+        wpB = calculateDestination(wpB, xAxisBearing, xEnd);
+        wpB = calculateDestination(wpB, yAxisBearing, y);
 
-        float rotatedFirstX = firstX * sinT + firstY * cosT;
-        float rotatedFirstY = firstX * (-cosT) + firstY * sinT;
-        firstNode.x = std::round(center.x + rotatedFirstX);
-        firstNode.y = std::round(center.y + rotatedFirstY);
+        wpA.alt = loader.get_elevation_at_coordinate(map, wpA.lat, wpA.lon) + 15;
+        wpB.alt = loader.get_elevation_at_coordinate(map, wpB.lat, wpB.lon) + 15;
 
-        float rotatedSecondX = secondX * sinT + secondY * cosT;
-        float rotatedSecondY = secondX * (-cosT) + secondY * sinT;
-        secondNode.x = std::round(center.x + rotatedSecondX);
-        secondNode.y = std::round(center.y + rotatedSecondY);
-
-        // Adds the nodes to the path vector
-        if (map.is_valid(firstNode.x, firstNode.y) && map.is_valid(secondNode.x, secondNode.y)) {
-            firstNode.alt = map.get_elevation(firstNode.x, firstNode.y);
-            secondNode.alt = map.get_elevation(secondNode.x, secondNode.y);
-            path.push_back(firstNode);
-            path.push_back(secondNode);
+        if (wpA.alt < -9000 || wpB.alt < -9000) {
+            std::cerr << "Warning: Generated waypoint outside map bounds." << std::endl;
         } else {
-            return {};
+            path.push_back(wpA);
+            path.push_back(wpB);
         }
 
-        goingLeft = !goingLeft;
+        goingRight = !goingRight;
     }
 
     return path;

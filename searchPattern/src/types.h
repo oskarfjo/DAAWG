@@ -22,10 +22,15 @@ namespace CalculatedPath {
         int autocontinue = 1;
     };
 
-    struct Node // formatted for A*
+    struct Node
     {
         int x, y; // Grid index
         float alt;
+    };
+
+    struct Coordinate
+    {
+        double lat, lon;
     };
 }
 

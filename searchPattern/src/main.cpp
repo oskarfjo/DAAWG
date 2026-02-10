@@ -20,56 +20,31 @@ int main() {
     GeoLoader loader;
     MapData currentMap;
 
-    std::string mapPath = "../maps/tifs/lowerRight.tif"; // Path to the .tif file
-    
-    std::cout << "Loading map from: " << mapPath << std::endl;
+    std::string mapPath = "../maps/tifs/lowerRight.tif";
     
     if (!loader.load_map(mapPath, currentMap)) {
-        std::cerr << "Failed to load map data! Check file path." << std::endl;
         return 1;
     }
-    std::cout << "Map loaded successfully (" << currentMap.width << "m x " << currentMap.height << "m)" << std::endl;
 
     //// DEFINE AVALANCHE LOCATION ////
     Waypoint wAvalanche;
     wAvalanche.lat = 62.3072221;
     wAvalanche.lon = 6.836761;
+    wAvalanche.alt = loader.get_elevation_at_coordinate(currentMap, wAvalanche.lat, wAvalanche.lon); // Get center alt
 
     int avalancheLength = 200; // m
     int avalancheWidth = 85; // m
 
-    Node iAvalanche;
+    // Generates the search pattern (Directly returning Waypoints now)
+    std::vector<Waypoint> missionWaypoints = searchPattern(wAvalanche, avalancheLength, avalancheWidth, currentMap, loader);
 
-    std::cout << "Mapping waypoints to nodes..." << std::endl;
-    if (!loader.waypoint_to_node(currentMap, wAvalanche, iAvalanche)) {
-        std::cerr << "Avalanche is outside the loaded map area!" << std::endl;
-        return 1;
-    }
-
-    // Generates the search pattern
-    std::vector<Node> missionNodes = searchPattern(iAvalanche, avalancheLength, avalancheWidth, currentMap);
-
-    if (missionNodes.empty()) {
+    if (missionWaypoints.empty()) {
         std::cout << "Pattern generation error! <EMPTY VECTOR>" << std::endl;
         return 1;
     }
-
-    // converts Node vector to Waypoint vector
-    std::vector<Waypoint> missionWaypoints;
-    missionWaypoints.reserve(missionNodes.size());
-
-    for (size_t i = 0; i < missionNodes.size(); ++i) {
-
-        Node currentNode = missionNodes[i];
-        
-        Waypoint currentWaypoint;
-
-        if (loader.node_to_waypoint(currentMap, currentNode, currentWaypoint)) {
-            missionWaypoints.push_back(currentWaypoint);
-        }
-    }
     
     exportMissionFileTxt(missionWaypoints);
+    exportMissionFilePlan(missionWaypoints); // Optional if you use QGC .plan
 
     return 0;
 }
@@ -95,13 +70,13 @@ void exportMissionFileTxt(const std::vector<Waypoint>& path) {
             wp.wp_current = 1;
         } else {
             wp.wp_current = 0;
-            wp.coordinate_frame = 0; 
         }
 
-        wp.alt += 15;
+        wp.coordinate_frame = 0; 
         wp.action = 16;
         wp.pause = 0;
-        wp.passthrough_radius = 0;
+        wp.accept_radius = 5;
+        wp.passthrough_radius = 5;
         wp.yaw_wing = 0;
 
         outfile << std::fixed << std::setprecision(8) 
