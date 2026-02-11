@@ -28,8 +28,8 @@ int main() {
 
     //// DEFINE AVALANCHE LOCATION ////
     Waypoint wAvalanche;
-    wAvalanche.lat = 62.3072221;
-    wAvalanche.lon = 6.836761;
+    wAvalanche.lat = 62.3072221; //62.312669; 62.3127336;
+    wAvalanche.lon = 6.836761; // 6.8426098; 6.8367186;
     wAvalanche.alt = loader.get_elevation_at_coordinate(currentMap, wAvalanche.lat, wAvalanche.lon); // Get center alt
 
     int avalancheLength = 200; // m
