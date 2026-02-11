@@ -11,7 +11,6 @@ double toRadians(double degrees) {
     return degrees * (M_PI / 180.0);
 }
 
-// Helper: Convert Radians to Degrees
 double toDegrees(double radians) {
     return radians * (180.0 / M_PI);
 }
@@ -24,6 +23,8 @@ struct Coordinates {
 Coordinates calculateSignalOrigin(double droneLat, double droneLon, double droneAlt, 
                                   double droneHeading, double sensorAngle, double sensorDistance) {
 
+    // https://www.movable-type.co.uk/scripts/latlong.html
+    
     double groundDistance = 0.0;
     if (sensorDistance > droneAlt) {
         groundDistance = std::sqrt(std::pow(sensorDistance, 2) - std::pow(droneAlt, 2));
