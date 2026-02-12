@@ -35,7 +35,6 @@ int main() {
     int avalancheLength = 200; // m
     int avalancheWidth = 85; // m
 
-    // Generates the search pattern (Directly returning Waypoints now)
     std::vector<Waypoint> missionWaypoints = searchPattern(wAvalanche, avalancheLength, avalancheWidth, currentMap, loader);
 
     if (missionWaypoints.empty()) {
@@ -43,8 +42,8 @@ int main() {
         return 1;
     }
     
-    exportMissionFileTxt(missionWaypoints);
-    exportMissionFilePlan(missionWaypoints); // Optional if you use QGC .plan
+    //exportMissionFileTxt(missionWaypoints);
+    exportMissionFilePlan(missionWaypoints);
 
     return 0;
 }
@@ -78,6 +77,7 @@ void exportMissionFileTxt(const std::vector<Waypoint>& path) {
         wp.accept_radius = 5;
         wp.passthrough_radius = 5;
         wp.yaw_wing = 0;
+        wp.autocontinue = 1;
 
         outfile << std::fixed << std::setprecision(8) 
                 << wp.wp_nr << "\t"
@@ -114,17 +114,18 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
     for (size_t i = 0; i < path.size(); ++i) {
         Waypoint wp = path[i];
 
-        int command = 16;  // MAV_CMD_NAV_WAYPOINT
-        int frame = 0;  // 0 = MAV_FRAME_GLOBAL
+        int command = 16;
+        int frame = 0;
+        wp.accept_radius = 5;
+        wp.pause = 0;
         bool autoContinue = true;
-        double altitude = wp.alt + 15;
 
         if (i > 0) itemsJson << ",";
         
         itemsJson << R"(
         {
             "AMSLAltAboveTerrain": null,
-            "Altitude": )" << altitude << R"(,
+            "Altitude": )" << wp.alt << R"(,
             "AltitudeMode": 2,
             "autoContinue": )" << (autoContinue ? "true" : "false") << R"(,
             "command": )" << command << R"(,
@@ -137,16 +138,11 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
                 null,
                 )" << wp.lat << R"(,
                 )" << wp.lon << R"(,
-                )" << altitude << R"(
+                )" << wp.alt << R"(
             ],
             "type": "SimpleItem"
         })";
     }
-
-    // Get home position from first waypoint (or use defaults)
-    double homeLat = path.empty() ? 0.0 : path[0].lat;
-    double homeLon = path.empty() ? 0.0 : path[0].lon;
-    double homeAlt = path.empty() ? 0.0 : path[0].alt;
 
     outfile << std::fixed << std::setprecision(8);
     outfile << R"({
@@ -165,9 +161,9 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
         "items": [)" << itemsJson.str() << R"(
         ],
         "plannedHomePosition": [
-            )" << homeLat << R"(,
-            )" << homeLon << R"(,
-            )" << homeAlt << R"(
+            )" << path[0].lat << R"(,
+            )" << path[0].lon << R"(,
+            )" << path[0].alt << R"(
         ],
         "vehicleType": 20,
         "version": 2

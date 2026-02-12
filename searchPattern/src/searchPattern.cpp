@@ -35,9 +35,12 @@ Waypoint calculateDestinationCoord(Waypoint start, double angle, double distance
 }
 
 std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length, int width, const MapData& map, const GeoLoader& loader) {
+
+    double laneSpacing = 20; // (m)
+    float hoverAltitude = 25; // (m)
+
     std::vector<Waypoint> path;
 
-    // 1. Calculate Gradient
     double halfWidth = width / 2.0;
     double halfLength = length / 2.0;
 
@@ -64,7 +67,7 @@ std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length,
     
     roughGradientDeg = normalizeDeg(roughGradientDeg);
 
-    std::cout << "rough gradient: " << roughGradientDeg << "°" << std::endl;
+    //std::cout << "rough gradient: " << roughGradientDeg << "°" << std::endl;
 
     Waypoint refinedNorthPt = calculateDestinationCoord(center, roughGradientDeg, halfLength);
     Waypoint refinedSouthPt = calculateDestinationCoord(center, roughGradientDeg + 180.0, halfLength);
@@ -89,13 +92,12 @@ std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length,
     
     refinedGradientDeg = normalizeDeg(refinedGradientDeg);
 
-    std::cout << "refined gradient: " << refinedGradientDeg << "°" << std::endl;
+    //std::cout << "refined gradient: " << refinedGradientDeg << "°" << std::endl;
 
     // Local coordinate system
+    // Local y-axis parallel to the gradient of the current slope
     double yAxisBearing = refinedGradientDeg;
     double xAxisBearing = refinedGradientDeg + 90.0;
-
-    double laneSpacing = 20; // (m)
 
     Waypoint topPt = calculateDestinationCoord(center, refinedGradientDeg, halfLength);
     Waypoint bottomPt = calculateDestinationCoord(center, refinedGradientDeg + 180.0, halfLength);
@@ -103,16 +105,16 @@ std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length,
     topPt.alt = loader.get_elevation_at_coordinate(map, topPt.lat, topPt.lon);
     bottomPt.alt = loader.get_elevation_at_coordinate(map, bottomPt.lat, bottomPt.lon);
 
-    std::cout << "Top pt alt: " << topPt.alt << "moh" << std::endl;
-    std::cout << "Bottom pt alt: " << bottomPt.alt << "moh" << std::endl;
+    //std::cout << "Top pt alt: " << topPt.alt << "moh" << std::endl;
+    //std::cout << "Bottom pt alt: " << bottomPt.alt << "moh" << std::endl;
 
     double dz_dy = (topPt.alt - bottomPt.alt) / static_cast<double>(length);
     double slopeAngle = std::atan(dz_dy);
     double projectedLaneSpacing = laneSpacing * std::cos(slopeAngle);
 
-    std::cout << "dz_dy: " << dz_dy << std::endl;
-    std::cout << "Projected angle: " << slopeAngle*180/M_PI << "°" << std::endl;
-    std::cout << "Projected spacing: " << projectedLaneSpacing << "m" << std::endl;
+    //std::cout << "dz_dy: " << dz_dy << std::endl;
+    //std::cout << "Projected angle: " << slopeAngle*180/M_PI << "°" << std::endl;
+    //std::cout << "Projected spacing: " << projectedLaneSpacing << "m" << std::endl;
 
     bool goingRight = true;
     for (double y = halfLength; y >= -halfLength; y -= projectedLaneSpacing) {
@@ -135,10 +137,10 @@ std::vector<Waypoint> CalculatedPath::searchPattern(Waypoint center, int length,
         wpB = calculateDestinationCoord(wpB, yAxisBearing, y);
         wpB = calculateDestinationCoord(wpB, xAxisBearing, xEnd);
 
-        wpA.alt = loader.get_elevation_at_coordinate(map, wpA.lat, wpA.lon) + 15;
-        wpB.alt = loader.get_elevation_at_coordinate(map, wpB.lat, wpB.lon) + 15;
+        wpA.alt = loader.get_elevation_at_coordinate(map, wpA.lat, wpA.lon) + hoverAltitude;
+        wpB.alt = loader.get_elevation_at_coordinate(map, wpB.lat, wpB.lon) + hoverAltitude;
 
-        if (wpA.alt < -9000 || wpB.alt < -9000) {
+        if (wpA.alt < -9999 || wpB.alt < -9999) {
             std::cerr << "Warning: Generated waypoint outside map bounds." << std::endl;
         } else {
             path.push_back(wpA);

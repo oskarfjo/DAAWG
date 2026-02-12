@@ -19,7 +19,7 @@ namespace CalculatedPath {
         double lat;
         double lon;
         float alt;
-        int autocontinue = 1;
+        int autocontinue;
     };
 
     struct Node
