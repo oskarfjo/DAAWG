@@ -59,7 +59,7 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
         startOption.x = start.x;
         startOption.y = start.y;
         startOption.z = roundedStartAlt + initZoffset;
-        startOption.gCost = initZoffset * 2;
+        startOption.gCost = initZoffset * 10;
         startOption.hCost = calculateDistance3D(startOption, goalInternal);
 
         allNodes.push_back(startOption);
@@ -115,6 +115,41 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                     neighbor.y = nextY;
                     neighbor.z = nextZ;
 
+                    int safetyRadius = 4; // 40m (4 nodes)
+                    float closestDistance = nextZ - groundAlt;
+                    
+                    for (int xSphereOffset=-safetyRadius; xSphereOffset <=safetyRadius; xSphereOffset += 2) {
+                        for (int ySphereOffset=-safetyRadius; ySphereOffset <=safetyRadius; ySphereOffset += 2) {
+                            
+                            if (xSphereOffset == 0 && ySphereOffset == 0) continue;
+
+                            int checkX = nextX + xSphereOffset;
+                            int checkY = nextY + ySphereOffset;
+
+                            if (!map.is_valid(checkX, checkY)) continue;
+
+                            int checkAlt = std::ceil(map.get_elevation(checkX, checkY));
+
+                            float diffX = static_cast<float>(checkX - nextX) * 10.0f;
+                            float diffY = static_cast<float>(checkY - nextY) * 10.0f;
+                            float diffZ;
+
+                            if (checkAlt >= nextZ) {
+                                diffZ = 0;
+                            } else {
+                                diffZ = (nextZ - checkAlt) * 2.0f;
+                            }
+
+                            float calculatedDistance = std::sqrt(
+                                std::pow(diffX, 2) +
+                                std::pow(diffY, 2) +
+                                std::pow(diffZ, 2)
+                            );
+
+                            if (calculatedDistance < closestDistance) closestDistance = calculatedDistance;
+                        }
+                    }
+
                     float altCostMultiplier;
                     if (nextZ <= groundAlt+20) {
                         altCostMultiplier = 20.0f;
@@ -128,7 +163,16 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                         altCostMultiplier = 5.0f;
                     }
 
-                    float moveCost = calculateDistance3D(*current, neighbor) * altCostMultiplier;
+                    float proxCostMultiplier;
+                    if (closestDistance <= 20) {
+                        proxCostMultiplier = 10.0f;
+                    } else if (closestDistance <= 40) {
+                        proxCostMultiplier = 5.0f;
+                    } else {
+                        proxCostMultiplier = 1.0f;
+                    }
+
+                    float moveCost = calculateDistance3D(*current, neighbor) * altCostMultiplier * proxCostMultiplier;
                     float newGCost = current->gCost + moveCost;
 
                     Coordinate coord = {nextX, nextY, nextZ};
@@ -150,6 +194,7 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                             "\t hCost current: " << neighborPtr->hCost <<
                             "\t fCost current: " << neighborPtr->fCost() <<
                             "\t altCostMultiplier " << altCostMultiplier <<
+                            "\t proxCostMultiplier " << proxCostMultiplier <<
                             std::endl;
                         }
                     }
