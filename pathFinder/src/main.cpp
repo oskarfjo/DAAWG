@@ -12,6 +12,18 @@
 
 using namespace CalculatedPath;
 
+double toRad(double degree) {
+    return degree/180 * M_PI;
+}
+
+double calculateDistance(double lat1, double long1, double lat2, double long2) {
+    double dist;
+    dist = sin(toRad(lat1)) * sin(toRad(lat2)) + cos(toRad(lat1)) * cos(toRad(lat2)) * cos(toRad(long1 - long2));
+    dist = acos(dist);
+    dist = 6371000 * dist;
+    return dist;
+}
+
 void exportMissionFileTxt(const std::vector<Waypoint>& path);
 
 void exportMissionFilePlan(const std::vector<Waypoint>& path);
@@ -59,6 +71,7 @@ int main() {
 
     if (gridPath.empty()) {
         std::cout << "No path found" << std::endl;
+        return 1;
     } else {
         std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
         
@@ -69,10 +82,20 @@ int main() {
         std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
 
         std::cout << "Simplified to (" << smoothPath.size() << " waypoints)." << std::endl;
+
+        if (false) { // debug
+            for (int i = 0; i < smoothPath.size(); i++) {
+                double distance = calculateDistance(smoothPath[i].lat, smoothPath[i].lon, smoothPath[i+1].lat, smoothPath[i+1].lon);
+                double altDiff = smoothPath[i+1].alt - smoothPath[i].alt;
+                double angle = std::asin(altDiff/distance) * (180/M_PI);
+                std::cout << "WP" << i << ": Angle = " << angle << "°" << std::endl;
+            }
+        }
         
         std::cout << "Creating mission file" << std::endl;
         exportMissionFilePlan(smoothPath);
         exportMissionFileTxt(smoothPath);
+        return 0;
     }
 }
 
