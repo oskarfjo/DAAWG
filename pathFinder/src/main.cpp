@@ -171,7 +171,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
             "command": 84,
             "doJumpId": )" << jumpId++ << R"(,
             "frame": 0,
-            "params": [0, 0, 0, null, )" << path[0].lat << ", " << path[0].lon << ", " << path[0].alt << R"(],
+            "params": [0, 0, 0, 0, )" << path[0].lat << ", " << path[0].lon << ", " << path[0].alt << R"(],
             "type": "SimpleItem"
         })";
 
@@ -190,7 +190,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
                 )" << path[i].pause << R"(,
                 )" << path[i].accept_radius << R"(,
                 0,
-                null,
+                0,
                 )" << path[i].lat << R"(,
                 )" << path[i].lon << R"(,
                 )" << path[i].alt << R"(

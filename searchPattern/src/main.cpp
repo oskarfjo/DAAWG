@@ -135,7 +135,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
                 )" << wp.pause << R"(,
                 )" << wp.accept_radius << R"(,
                 0,
-                null,
+                0,
                 )" << wp.lat << R"(,
                 )" << wp.lon << R"(,
                 )" << wp.alt << R"(
