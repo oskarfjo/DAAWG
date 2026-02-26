@@ -46,8 +46,8 @@ int main() {
 
     //// DEFINE START AND END ////
     Waypoint wstart;
-    wstart.lat = 62.290748;
-    wstart.lon = 6.844344;
+    wstart.lat = 62.2592609; //62.290748;
+    wstart.lon = 6.8386337; //6.844344;
 
     Waypoint wgoal;
     wgoal.lat = 62.2989958;
@@ -76,20 +76,24 @@ int main() {
         std::cout << "Path found (" << gridPath.size() << " nodes)." << std::endl;
         
         // SIMPLIFY
-        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 10.0); 
+        std::vector<Node> simplePath = BSpline::Simplify(gridPath, 3.0); 
         
         // SMOOTH
-        std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 3);
+        std::vector<Waypoint> smoothPath = BSpline::Generate(simplePath, loader, currentMap, 2);
 
         std::cout << "Simplified to (" << smoothPath.size() << " waypoints)." << std::endl;
 
         if (false) { // debug
-            for (int i = 0; i < smoothPath.size(); i++) {
+            double totalDistance;
+            for (int i = 0; i < smoothPath.size()-1; i++) {
                 double distance = calculateDistance(smoothPath[i].lat, smoothPath[i].lon, smoothPath[i+1].lat, smoothPath[i+1].lon);
                 double altDiff = smoothPath[i+1].alt - smoothPath[i].alt;
                 double angle = std::asin(altDiff/distance) * (180/M_PI);
+                totalDistance += distance;
                 std::cout << "WP" << i << ": Angle = " << angle << "°" << std::endl;
             }
+            std::cout << "Total path distance: " << totalDistance << " m" << std::endl;
+            std::cout << "Transit time: " << totalDistance / (80 * 1000/60) << " min" << std::endl;
         }
         
         std::cout << "Creating mission file" << std::endl;
@@ -171,7 +175,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
             "command": 84,
             "doJumpId": )" << jumpId++ << R"(,
             "frame": 0,
-            "params": [0, 0, 0, null, )" << path[0].lat << ", " << path[0].lon << ", " << path[0].alt << R"(],
+            "params": [0, 0, 0, 0, )" << path[0].lat << ", " << path[0].lon << ", " << path[0].alt << R"(],
             "type": "SimpleItem"
         })";
 
@@ -190,7 +194,7 @@ void exportMissionFilePlan(const std::vector<Waypoint>& path) {
                 )" << path[i].pause << R"(,
                 )" << path[i].accept_radius << R"(,
                 0,
-                null,
+                0,
                 )" << path[i].lat << R"(,
                 )" << path[i].lon << R"(,
                 )" << path[i].alt << R"(

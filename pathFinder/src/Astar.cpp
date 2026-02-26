@@ -115,11 +115,11 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                     neighbor.y = nextY;
                     neighbor.z = nextZ;
 
-                    int safetyRadius = 4; // 40m (4 nodes)
+                    int safetyRadius = 5; // 50m (5 nodes)
                     float closestDistance = nextZ - groundAlt;
-                    
-                    for (int xSphereOffset=-safetyRadius; xSphereOffset <=safetyRadius; xSphereOffset += 2) {
-                        for (int ySphereOffset=-safetyRadius; ySphereOffset <=safetyRadius; ySphereOffset += 2) {
+                    if (true) {
+                    for (int xSphereOffset=-safetyRadius; xSphereOffset <=safetyRadius; xSphereOffset += 5) {
+                        for (int ySphereOffset=-safetyRadius; ySphereOffset <=safetyRadius; ySphereOffset += 5) {
                             
                             if (xSphereOffset == 0 && ySphereOffset == 0) continue;
 
@@ -149,14 +149,17 @@ std::vector<Node> CalculatedPath::A_star(Node start, Node goal, const MapData& m
                             if (calculatedDistance < closestDistance) closestDistance = calculatedDistance;
                         }
                     }
+                    }
 
                     float altCostMultiplier;
-                    if (nextZ <= groundAlt+20) {
-                        altCostMultiplier = 20.0f;
+                    if (nextZ <= groundAlt+10) {
+                        altCostMultiplier = 100.0f;
+                    } else if (nextZ <= groundAlt+20) {
+                        altCostMultiplier = 30.0f;
                     } else if (nextZ <= groundAlt+35) {
-                        altCostMultiplier = 10.0f;
+                        altCostMultiplier = 20.0f;
                     } else if (nextZ <= groundAlt+70) {
-                        altCostMultiplier = 3.0f;
+                        altCostMultiplier = 10.0f;
                     } else if (nextZ <= groundAlt+100) {
                         altCostMultiplier = 1.0f;
                     } else {
