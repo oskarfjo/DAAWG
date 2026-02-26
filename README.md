@@ -7,3 +7,4 @@ DEPS:
 
 sudo apt install libgdal-dev build-essential
 
+pip3 install mavproxy pymavlink future                      
