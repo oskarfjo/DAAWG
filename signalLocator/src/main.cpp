@@ -2,6 +2,7 @@
 #include <string>
 #include <cmath>
 #include <map>
+#include <vector>
 #include <numbers>
 #include <iomanip>
 
@@ -15,12 +16,14 @@ double toDegrees(double radians) {
     return radians * (180.0 / M_PI);
 }
 
-struct Coordinates {
-    double lat;
-    double lon;
+struct Coordinate {
+    double lat, lon;
+    float alt;
+    int group;
+    int signalQuality;
 };
 
-Coordinates calculateSignalOrigin(double droneLat, double droneLon, double droneAlt, 
+Coordinate calculateSignalOrigin(double droneLat, double droneLon, double droneAlt, 
                                   double droneHeading, double sensorAngle, double sensorDistance) {
 
     // https://www.movable-type.co.uk/scripts/latlong.html
@@ -49,6 +52,8 @@ Coordinates calculateSignalOrigin(double droneLat, double droneLon, double drone
 }
 
 int main() {
+
+    std::vector<Coordinate> coordinateHistory;
     double dLat, dLon, dAlt, dHeading, sDist, sAngle;
 
     // Drone
@@ -61,8 +66,10 @@ int main() {
     sDist = 40;
     sAngle = 45;
 
-    Coordinates target = calculateSignalOrigin(dLat, dLon, dAlt, dHeading, sAngle, sDist);
+    Coordinate target = calculateSignalOrigin(dLat, dLon, dAlt, dHeading, sAngle, sDist);
 
+    coordinateHistory.push_back(target);
+    
     std::cout << std::fixed << std::setprecision(6);
     std::cout << "\n--- Calculation Result ---\n";
     std::cout << "Signal Origin: " << target.lat << ", " << target.lon << "\n";
