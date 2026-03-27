@@ -6,6 +6,10 @@
 #include <numbers>
 #include <iomanip>
 
+#include <fcntl.h>
+#include <termios.h>
+#include <unistd.h>
+
 const double EARTH_RADIUS_M = 6378137.0;
 
 double toRadians(double degrees) {
@@ -59,21 +63,75 @@ int main() {
     // Drone
     dLat = 62.2991464;
     dLon = 6.8483205;
-    dAlt = 25; // (m) relative to ground
+    dAlt = 1; // (m) relative to ground
     dHeading = 0; // North = 0 deg
+    sDist = 5; // meters
 
-    // Sensor
-    sDist = 40;
-    sAngle = 45;
+    int serial_port = open("/dev/ttyACM0", O_RDWR);
 
-    Coordinate target = calculateSignalOrigin(dLat, dLon, dAlt, dHeading, sAngle, sDist);
+    if (serial_port < 0) {
+        std::cerr << "Error: Could not open serial port." << std::endl;
+        return 1;
+    }
 
-    coordinateHistory.push_back(target);
-    
-    std::cout << std::fixed << std::setprecision(6);
-    std::cout << "\n--- Calculation Result ---\n";
-    std::cout << "Signal Origin: " << target.lat << ", " << target.lon << "\n";
-    std::cout << "Ground Distance: " << std::sqrt(std::pow(sDist, 2) - std::pow(dAlt, 2)) << " meters\n";
+    struct termios tty;
+    if(tcgetattr(serial_port, &tty) != 0) return 1;
+
+    cfsetispeed(&tty, B9600); // Set Baud Rate
+    cfsetospeed(&tty, B9600);
+    tty.c_cflag |= (CLOCAL | CREAD); // Ignore modem lines, enable receiver
+    tty.c_cflag &= ~PARENB;         // No parity
+    tty.c_cflag &= ~CSTOPB;         // 1 stop bit
+    tty.c_cflag &= ~CSIZE;
+    tty.c_cflag |= CS8;             // 8 data bits
+
+    tcsetattr(serial_port, TCSANOW, &tty);
+
+    std::string angle_received;
+    char c;
+    bool capturing = false;
+
+    std::cout << "Monitoring serial port..." << std::endl;
+    while (true) {
+        // Read 1 byte at a time
+        if (read(serial_port, &c, 1) > 0) {
+            if (c == '#') {
+                capturing = true;
+            } else if (c == '&' && capturing) {
+                capturing = false;
+            } else if (capturing) {
+                angle_received = c;
+
+                if (angle_received == "0") {
+                    sAngle = dHeading - 45;
+                } else if (angle_received == "1") {
+                    sAngle = dHeading - 22.5;
+                } else if (angle_received == "2") {
+                    sAngle = dHeading;
+                } else if (angle_received == "3") {
+                    sAngle = dHeading + 22.5;
+                } else if (angle_received == "4") {
+                    sAngle = dHeading + 45;
+                } else {
+                    std::cout << "bad angle_recieved = " << angle_received << std::endl;
+                }
+                
+                Coordinate target = calculateSignalOrigin(dLat, dLon, dAlt, dHeading, sAngle, sDist);
+
+                coordinateHistory.push_back(target);
+                
+                if (false) {
+                    std::cout << std::fixed << std::setprecision(6);
+                    std::cout << "\n--- Calculation Result ---\n";
+                    std::cout << "Signal Origin: " << target.lat << ", " << target.lon << "\n";
+                    std::cout << "Ground Distance: " << std::sqrt(std::pow(sDist, 2) - std::pow(dAlt, 2)) << " meters\n";
+                    std::cout << "Parsed Message: " << angle_received << std::endl;
+                }
+            }
+        }
+    }
+
+    close(serial_port);
 
     return 0;
 }
