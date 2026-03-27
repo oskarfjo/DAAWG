@@ -5,7 +5,6 @@
 #include <vector>
 #include <numbers>
 #include <iomanip>
-
 #include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -23,7 +22,7 @@ double toDegrees(double radians) {
 struct Coordinate {
     double lat, lon;
     float alt;
-    int group;
+    int rssi;
     int signalQuality;
 };
 
@@ -91,9 +90,7 @@ int main() {
     char c;
     bool capturing = false;
 
-    std::cout << "Monitoring serial port..." << std::endl;
     while (true) {
-        // Read 1 byte at a time
         if (read(serial_port, &c, 1) > 0) {
             if (c == '#') {
                 capturing = true;
@@ -118,8 +115,19 @@ int main() {
                 
                 Coordinate target = calculateSignalOrigin(dLat, dLon, dAlt, dHeading, sAngle, sDist);
 
+                // TODO: consider calculating the signal quality using the SD of the rssi measurement
+
                 coordinateHistory.push_back(target);
+
+                if (coordinateHistory.size() > 20) { // the sensor currently gives values at a rate of ca 50 Hz
+                    // TODO: Change the teensy code so that it only Serial.println when it gets a new ping. It currently prints the last value it got at a constant speed
+                    coordinateHistory.erase(coordinateHistory.begin());
+                }
                 
+                for (int i=0; i < coordinateHistory.size(); i++) {
+                        std::cout << "Coordinate history: " << coordinateHistory[i].lat << ", " << coordinateHistory[i].lon << std::endl;
+                }
+
                 if (false) {
                     std::cout << std::fixed << std::setprecision(6);
                     std::cout << "\n--- Calculation Result ---\n";
