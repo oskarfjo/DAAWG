@@ -24,5 +24,7 @@ signalLocator/.vscode/
 pixhawk_coms/mav.*
 pixhawk_coms/.venv
 
+beaconVisualizer/logg.csv
+
 flowchart.drawio
 .$flowchart.drawio.bkp
