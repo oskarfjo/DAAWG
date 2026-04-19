@@ -6,6 +6,8 @@ import time
 import socket
 import csv
 
+HEATMAP = True
+
 ### UDP Setup ###
 UDP_IP = "0.0.0.0"
 UDP_PORT = 8080
@@ -16,7 +18,11 @@ sock.setblocking(False)
 
 
 ### CSV Logging ###
-fieldnames = ['time(s)', 'angle(deg)', 'rssi']
+if (not HEATMAP):
+    fieldnames = ['time(s)', 'angle(deg)', 'rssi', 'lat', 'lon']
+else:
+    fieldnames = ['rssi', 'lat', 'lon']
+    
 logg_title = 'logg'
 with open(logg_title + '.csv', 'w', newline='') as f:    
     writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -74,11 +80,14 @@ while running:
     try:
         data, addr = sock.recvfrom(1024)
         message = data.decode('utf-8').strip()
+        print(message)
         
         if "," in message:
             parts = message.split(",")
             angle_id = parts[0]
             rssi = float(parts[1])
+            lat = float(parts[2])
+            lon = float(parts[3])
             
         angle_map = {"0": 45.0, "1": 22.5, "2": 0.0, "3": -22.5, "4": -45.0}
         
@@ -91,7 +100,11 @@ while running:
         
         with open('logg.csv', 'a', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
-            data = [{'time(s)': round(timer, 2), 'angle(deg)': angle, 'rssi': rssi}]
+            if (not HEATMAP):
+                data = [{'time(s)': round(timer, 2), 'angle(deg)': angle, 'rssi': rssi, 'lat': lat, 'lon': lon}]
+            else:
+                data = [{'rssi': rssi, 'lat': lat, 'lon': lon}]
+
             writer.writerows(data)
             
     except BlockingIOError:
